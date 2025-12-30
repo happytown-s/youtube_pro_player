@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 
 declare global {
   interface Window {
@@ -123,7 +123,7 @@ function App() {
     }
   }, [crossfader, playerA, playerB]);
 
-  const handleHotCue = (deck: 'A' | 'B', index: number) => {
+  const handleHotCue = useCallback((deck: 'A' | 'B', index: number) => {
     const setState = deck === 'A' ? setStateA : setStateB;
     const player = deck === 'A' ? playerA : playerB;
     // Use ref to get the latest state without relying on setState functional update for side effects
@@ -144,11 +144,9 @@ function App() {
     } else {
       // Jump and Play
       player.seekTo(currentCue, true);
-      if (!currentState.isPlaying) {
-        player.playVideo();
-      }
+      player.playVideo();
     }
-  };
+  }, [playerA, playerB]);
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -185,7 +183,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [playerA, playerB]); // Simplified dependency as handleHotCue uses functional updates
+  }, [playerA, playerB, handleHotCue]);
 
   const handlePlayPause = (deck: 'A' | 'B') => {
     const player = deck === 'A' ? playerA : playerB;
