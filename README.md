@@ -1,4 +1,4 @@
-# YouTube DJ Pro
+# YoutubeDjPro
 
 YouTube IFrame APIを活用した、プロフェッショナルな操作感を目指した2デッキDJアプリケーションのプロトタイプです。
 
