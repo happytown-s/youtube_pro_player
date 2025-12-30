@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 declare global {
   interface Window {
@@ -38,6 +38,18 @@ function App() {
     videoId: INITIAL_VIDEO_ID_B,
     volume: 100,
   });
+
+  // Refs to access latest state in event handlers without stale closures or side-effects in setState
+  const stateARef = useRef(stateA);
+  const stateBRef = useRef(stateB);
+
+  useEffect(() => {
+    stateARef.current = stateA;
+  }, [stateA]);
+
+  useEffect(() => {
+    stateBRef.current = stateB;
+  }, [stateB]);
 
   useEffect(() => {
     // Load YouTube API
@@ -111,6 +123,33 @@ function App() {
     }
   }, [crossfader, playerA, playerB]);
 
+  const handleHotCue = (deck: 'A' | 'B', index: number) => {
+    const setState = deck === 'A' ? setStateA : setStateB;
+    const player = deck === 'A' ? playerA : playerB;
+    // Use ref to get the latest state without relying on setState functional update for side effects
+    const currentState = deck === 'A' ? stateARef.current : stateBRef.current;
+
+    if (!player) return;
+
+    const currentCue = currentState.cuePoints[index];
+
+    if (currentCue === null) {
+      // Set Cue Point (Current Time)
+      const currentTime = player.getCurrentTime();
+      setState(s => {
+        const newCues = [...s.cuePoints];
+        newCues[index] = currentTime;
+        return { ...s, cuePoints: newCues };
+      });
+    } else {
+      // Jump and Play
+      player.seekTo(currentCue, true);
+      if (!currentState.isPlaying) {
+        player.playVideo();
+      }
+    }
+  };
+
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -158,34 +197,6 @@ function App() {
     } else {
       player.playVideo();
     }
-  };
-
-  const handleHotCue = (deck: 'A' | 'B', index: number) => {
-    // We'll use a functional state update to avoid stale closures in the event listener
-    const setState = deck === 'A' ? setStateA : setStateB;
-    const player = deck === 'A' ? playerA : playerB;
-
-    if (!player) return;
-
-    // We need to get the current state from the functional update to handle event listener context
-    setState(s => {
-      const currentCue = s.cuePoints[index];
-
-      if (currentCue === null) {
-        // Set Cue Point (Current Time)
-        const currentTime = player.getCurrentTime();
-        const newCues = [...s.cuePoints];
-        newCues[index] = currentTime;
-        return { ...s, cuePoints: newCues };
-      } else {
-        // Jump and Play
-        player.seekTo(currentCue, true);
-        if (!s.isPlaying) {
-          player.playVideo();
-        }
-        return s;
-      }
-    });
   };
 
   const handleClearCue = (deck: 'A' | 'B', index: number, e: React.MouseEvent) => {
