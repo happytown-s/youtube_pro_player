@@ -1,4 +1,4 @@
-# YoutubeDjPro
+# YouTube Pro Player
 
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -6,31 +6,29 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-### YouTube IFrame API搭載2デッキDJアプリ
+### プロフェッショナル仕様の単一デッキ・ビデオプレイヤー
 
-YouTube IFrame APIを活用した、プロフェッショナルな操作感を目指した2デッキDJアプリケーションのプロトタイプです。
+YouTube IFrame APIを極限まで活用し、高速なビデオサンプリングとキュートリガーを実現したプロフェッショナルなワークスペースです。
 
-![YouTube DJ Pro Logo](./public/logo.png)
+![YouTube Pro Player Logo](./public/logo.png)
 
 ## 主な機能
 
-- **2デッキ・ミキシング**: 左右の独立したプレーヤー（Deck A / Deck B）
-- **15 Hot Cues**: 各デッキに15個のホットキューを設定可能。クリックで瞬時にジャンプ＆再生。
-- **フルキーボード操作**: ホーム列、上段、下段を使用した直感的なキュー操作。
+- **単一デッキ・プロフェッショナルワークフロー**: 左右分割レイアウトにより、左側に大きなビデオ、右側にすべての操作系を配置。
+- **300 Hot Cues**: 10個のスロット × 30個のキー（Q-P, A-;, Z-/）で、合計300個のキューポイントを瞬時にトリガー。
+- **ゲートモード (Gate Mode)**: キーを押している間だけ再生、離すと停止。サンプラーのような直感的な操作が可能。
+- **キーボードフォーカス最適化**: UIをクリックしてもキーボード操作が途切れない高度なフォーカス管理。
 - **テンポ＆ピッチコントロール**: 再生速度を0.25x〜2.0xまで調整可能。
-- **クロスフェーダー**: 直感的な音量バランス調整。
+- **垂直ボリュームフェーダー**: 精密なGainコントロール。
 
-## キーボードマッピング
+## 操作方法
 
-### Deck A (左側)
-- **Hot Cue 1-5**: `Q`, `W`, `E`, `R`, `T`
-- **Hot Cue 6-10**: `A`, `S`, `D`, `F`, `G`
-- **Hot Cue 11-15**: `Z`, `X`, `C`, `V`, `B`
-
-### Deck B (右側)
-- **Hot Cue 1-5**: `Y`, `U`, `I`, `O`, `P`
-- **Hot Cue 6-10**: `H`, `J`, `K`, `L`, `;`
-- **Hot Cue 11-15**: `N`, `M`, `,`, `.`, `/`
+| カテゴリ | キー / 操作 |
+| --- | --- |
+| **スロット切り替え** | 数字キー `1` 〜 `0` |
+| **ホットキュー** | Q-P（上段）, A-;（中段）, Z-/（下段） |
+| **再生/停止** | スペースキー（または画面のSTART/STOP） |
+| **動画ロード** | 画面左上のVideo Sourceに入力してLOAD |
 
 ## セットアップと実行
 
