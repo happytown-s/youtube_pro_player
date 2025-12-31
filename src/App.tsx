@@ -44,15 +44,36 @@ const HOT_CUE_KEYS = [
 ];
 const FLAT_KEYS = HOT_CUE_KEYS.flat();
 
+const STORAGE_KEY = 'youtube_pro_player_data_v1';
+
 function App() {
   const [player, setPlayer] = useState<YTPlayer | null>(null);
-  const [state, setState] = useState<PlayerState>({
-    isPlaying: false,
-    playbackRate: 1.0,
-    cuePoints: Array(300).fill(null),
-    videoId: INITIAL_VIDEO_ID,
-    volume: 100,
-    isGateMode: false,
+
+  // Initialize state from LocalStorage if available
+  const [state, setState] = useState<PlayerState>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          ...parsed,
+          isPlaying: false, // Always start paused
+          playbackRate: parsed.playbackRate || 1.0,
+          volume: parsed.volume || 100,
+          isGateMode: parsed.isGateMode || false,
+        };
+      } catch (e) {
+        console.error("Failed to load saved state", e);
+      }
+    }
+    return {
+      isPlaying: false,
+      playbackRate: 1.0,
+      cuePoints: Array(300).fill(null),
+      videoId: INITIAL_VIDEO_ID,
+      volume: 100,
+      isGateMode: false,
+    };
   });
 
   const [slot, setSlot] = useState(0); // 0 to 9
@@ -61,6 +82,14 @@ function App() {
   const stateRef = useRef(state);
   useEffect(() => {
     stateRef.current = state;
+    // Auto-save to LocalStorage
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      videoId: state.videoId,
+      cuePoints: state.cuePoints,
+      playbackRate: state.playbackRate,
+      volume: state.volume,
+      isGateMode: state.isGateMode
+    }));
   }, [state]);
 
   const playerRef = useRef<YTPlayer | null>(null);
@@ -87,7 +116,7 @@ function App() {
       new window.YT.Player('player', {
         height: '100%',
         width: '100%',
-        videoId: INITIAL_VIDEO_ID,
+        videoId: stateRef.current.videoId, // Use saved videoId
         playerVars: {
           autoplay: 0,
           controls: 0,
