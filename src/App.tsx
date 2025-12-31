@@ -362,8 +362,8 @@ function Deck({ state, currentSlot, onSlotChange, onPlayPause, onHotCue, onClear
                 max={duration}
                 step="0.1"
                 value={currentTime}
-                onMouseDown={preventFocus}
                 onChange={handleSeek}
+                onMouseUp={(e) => e.currentTarget.blur()}
                 className="w-full h-2 bg-neutral-800 rounded-full appearance-none cursor-pointer accent-blue-500 relative z-10"
               />
             </div>
@@ -408,9 +408,9 @@ function Deck({ state, currentSlot, onSlotChange, onPlayPause, onHotCue, onClear
               min="0.25"
               max="2.0"
               step="0.05"
-              onMouseDown={preventFocus}
               value={state.playbackRate}
               onChange={(e) => onPitchChange(parseFloat(e.target.value))}
+              onMouseUp={(e) => e.currentTarget.blur()}
               className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
             />
           </div>
@@ -423,9 +423,9 @@ function Deck({ state, currentSlot, onSlotChange, onPlayPause, onHotCue, onClear
                 type="range"
                 min="0"
                 max="100"
-                onMouseDown={preventFocus}
                 value={state.volume}
                 onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
+                onMouseUp={(e) => e.currentTarget.blur()}
                 className="w-24 h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-neutral-200 -rotate-90 origin-center absolute"
               />
             </div>
