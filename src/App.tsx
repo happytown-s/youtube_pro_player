@@ -176,8 +176,10 @@ function App() {
     }
   }, []);
 
-  const handleClearCue = useCallback((index: number, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleClearCue = useCallback((index: number, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
     setState(s => {
       const newCues = [...s.cuePoints];
       newCues[index] = null;
@@ -204,6 +206,13 @@ function App() {
       const keyIndex = FLAT_KEYS.indexOf(key);
       if (keyIndex !== -1) {
         const globalIdx = slot * 30 + keyIndex;
+
+        // Shift + Key to delete cue
+        if (e.shiftKey) {
+          handleClearCue(globalIdx);
+          return;
+        }
+
         if (stateRef.current.isGateMode && stateRef.current.cuePoints[globalIdx] !== null) {
           setActiveKey(key);
         }
@@ -398,7 +407,7 @@ interface DeckProps {
   onSlotChange: (slot: number) => void;
   onPlayPause: () => void;
   onHotCue: (idx: number) => void;
-  onClearCue: (idx: number, e: React.MouseEvent) => void;
+  onClearCue: (idx: number, e?: React.MouseEvent) => void;
   onPitchChange: (val: number) => void;
   onVolumeChange: (val: number) => void;
   onGateModeToggle: () => void;
