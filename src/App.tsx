@@ -45,6 +45,14 @@ const HOT_CUE_KEYS = [
 const FLAT_KEYS = HOT_CUE_KEYS.flat();
 
 const STORAGE_KEY = 'youtube_pro_player_data_v1';
+const PRESETS_KEY = 'youtube_pro_player_presets_v1';
+
+interface Preset {
+  id: string;
+  name: string;
+  updatedAt: number;
+  state: PlayerState;
+}
 
 function App() {
   const [player, setPlayer] = useState<YTPlayer | null>(null);
@@ -78,6 +86,17 @@ function App() {
 
   const [slot, setSlot] = useState(0); // 0 to 9
   const [activeKey, setActiveKey] = useState<string | null>(null);
+
+  // Presets
+  const [presets, setPresets] = useState<Preset[]>(() => {
+    const saved = localStorage.getItem(PRESETS_KEY);
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [showLibrary, setShowLibrary] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+  }, [presets]);
 
   const stateRef = useRef(state);
   useEffect(() => {
@@ -255,8 +274,41 @@ function App() {
     }
   }, [extractVideoId]);
 
+  const handleSavePreset = useCallback(() => {
+    const name = window.prompt("Enter a name for this preset:", `My Mix ${presets.length + 1}`);
+    if (!name) return;
+
+    const newPreset: Preset = {
+      id: crypto.randomUUID(),
+      name,
+      updatedAt: Date.now(),
+      state: stateRef.current
+    };
+    setPresets(prev => [newPreset, ...prev]);
+  }, [presets]);
+
+  const handleLoadPreset = useCallback((preset: Preset) => {
+    setState(preset.state);
+    const p = playerRef.current;
+    if (p) {
+      if (p.loadVideoById) {
+        p.loadVideoById(preset.state.videoId);
+      }
+      p.setVolume(preset.state.volume);
+      p.setPlaybackRate(preset.state.playbackRate);
+    }
+    setShowLibrary(false);
+  }, []);
+
+  const handleDeletePreset = useCallback((id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm("Are you sure you want to delete this preset?")) {
+      setPresets(prev => prev.filter(p => p.id !== id));
+    }
+  }, []);
+
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-200 font-sans p-4 md:p-8 flex flex-col items-center">
+    <div className="min-h-screen bg-neutral-950 text-neutral-200 font-sans p-4 md:p-8 flex flex-col items-center relative">
       <header className="mb-12 flex flex-row items-center justify-center gap-6">
         <div className="relative w-16 h-16 md:w-20 md:h-20 group">
           <div className="absolute inset-0 bg-blue-500/30 rounded-full blur-2xl animate-pulse group-hover:bg-blue-500/40 transition-all"></div>
@@ -287,8 +339,55 @@ function App() {
           onGateModeToggle={handleGateModeToggle}
           onLoadUrl={handleLoadVideo}
           player={player}
+          onSavePreset={handleSavePreset}
+          onToggleLibrary={() => setShowLibrary(true)}
         />
       </main>
+
+      {/* Library Modal */}
+      {showLibrary && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-neutral-900 border border-neutral-700 w-full max-w-2xl max-h-[80vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="p-6 border-b border-neutral-800 flex justify-between items-center bg-neutral-900/50">
+              <h2 className="text-2xl font-black italic tracking-tighter text-white">PRESET LIBRARY</h2>
+              <button
+                onClick={() => setShowLibrary(false)}
+                className="w-10 h-10 rounded-full bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-3">
+              {presets.length === 0 ? (
+                <div className="text-center py-20 text-neutral-600 font-bold tracking-widest uppercase">
+                  No presets saved
+                </div>
+              ) : (
+                presets.map((preset) => (
+                  <div
+                    key={preset.id}
+                    onClick={() => handleLoadPreset(preset)}
+                    className="group bg-neutral-800/50 hover:bg-indigo-900/20 border border-neutral-700/50 hover:border-indigo-500/50 p-4 rounded-xl cursor-pointer transition-all flex justify-between items-center"
+                  >
+                    <div className="flex flex-col gap-1">
+                      <span className="font-bold text-lg text-white group-hover:text-indigo-300 transition-colors">{preset.name}</span>
+                      <span className="text-xs font-mono text-neutral-500">
+                        {new Date(preset.updatedAt).toLocaleString()} • {preset.state.videoId}
+                      </span>
+                    </div>
+                    <button
+                      onClick={(e) => handleDeletePreset(preset.id, e)}
+                      className="opacity-0 group-hover:opacity-100 p-2 text-neutral-500 hover:text-red-500 transition-all hover:bg-neutral-800 rounded-lg"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -304,10 +403,12 @@ interface DeckProps {
   onVolumeChange: (val: number) => void;
   onGateModeToggle: () => void;
   onLoadUrl: (url: string) => void;
+  onSavePreset: () => void;
+  onToggleLibrary: () => void;
   player: YTPlayer | null;
 }
 
-function Deck({ state, currentSlot, onSlotChange, onPlayPause, onHotCue, onClearCue, onPitchChange, onVolumeChange, onGateModeToggle, onLoadUrl, player }: DeckProps) {
+function Deck({ state, currentSlot, onSlotChange, onPlayPause, onHotCue, onClearCue, onPitchChange, onVolumeChange, onGateModeToggle, onLoadUrl, onSavePreset, onToggleLibrary, player }: DeckProps) {
   const [url, setUrl] = useState('');
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -364,8 +465,27 @@ function Deck({ state, currentSlot, onSlotChange, onPlayPause, onHotCue, onClear
       {/* LEFT COLUMN: Video & Timeline */}
       <div className="flex flex-col gap-6 sticky top-8">
         {/* Load Section */}
+        {/* Load Section */}
         <div className="bg-neutral-900 rounded-[2rem] border border-neutral-800 p-6 flex flex-col gap-4 shadow-xl">
-          <label className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.4em] italic px-2">Video Source</label>
+          <div className="flex justify-between items-end px-2">
+            <label className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.4em] italic">Video Source</label>
+            <div className="flex gap-2">
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={onToggleLibrary}
+                className="text-[10px] font-black bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white px-3 py-1 rounded-lg border border-neutral-700 transition-colors uppercase tracking-widest"
+              >
+                LIBRARY
+              </button>
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={onSavePreset}
+                className="text-[10px] font-black bg-neutral-800 hover:bg-neutral-700 text-indigo-400 hover:text-indigo-300 px-3 py-1 rounded-lg border border-neutral-700 transition-colors uppercase tracking-widest"
+              >
+                SAVE
+              </button>
+            </div>
+          </div>
           <div className="flex gap-3">
             <input
               type="text"
