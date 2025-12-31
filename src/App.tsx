@@ -26,7 +26,7 @@ function App() {
   const [stateA, setStateA] = useState<PlayerState>({
     isPlaying: false,
     playbackRate: 1.0,
-    cuePoints: Array(15).fill(null),
+    cuePoints: Array(45).fill(null),
     videoId: INITIAL_VIDEO_ID_A,
     volume: 100,
   });
@@ -34,10 +34,14 @@ function App() {
   const [stateB, setStateB] = useState<PlayerState>({
     isPlaying: false,
     playbackRate: 1.0,
-    cuePoints: Array(15).fill(null),
+    cuePoints: Array(45).fill(null),
     videoId: INITIAL_VIDEO_ID_B,
     volume: 100,
   });
+
+  // スロット選択状態 (0, 1, 2)
+  const [slotA, setSlotA] = useState(0);
+  const [slotB, setSlotB] = useState(0);
 
   // Refs to access latest state in event handlers without stale closures or side-effects in setState
   const stateARef = useRef(stateA);
@@ -160,6 +164,14 @@ function App() {
 
       const key = e.key.toLowerCase();
 
+      // Slot Selection
+      if (key === '1') setSlotA(0);
+      if (key === '2') setSlotA(1);
+      if (key === '3') setSlotA(2);
+      if (key === '7') setSlotB(0);
+      if (key === '8') setSlotB(1);
+      if (key === '9') setSlotB(2);
+
       // Deck A (Left Side): 3 rows of 5
       const deckAKeys = [
         'q', 'w', 'e', 'r', 't', // Top row (0-4)
@@ -168,7 +180,8 @@ function App() {
       ];
       const indexA = deckAKeys.indexOf(key);
       if (indexA !== -1) {
-        handleHotCue('A', indexA);
+        // スロットオフセットを追加
+        handleHotCue('A', slotA * 15 + indexA);
       }
 
       // Deck B (Right Side): 3 rows of 5
@@ -179,13 +192,14 @@ function App() {
       ];
       const indexB = deckBKeys.indexOf(key);
       if (indexB !== -1) {
-        handleHotCue('B', indexB);
+        // スロットオフセットを追加
+        handleHotCue('B', slotB * 15 + indexB);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [playerA, playerB]); // Simplified dependency as handleHotCue uses functional updates
+  }, [playerA, playerB, slotA, slotB]);
 
   const handlePlayPause = (deck: 'A' | 'B') => {
     const player = deck === 'A' ? playerA : playerB;
@@ -225,7 +239,7 @@ function App() {
     const videoId = extractVideoId(url);
     if (videoId) {
       player.loadVideoById(videoId);
-      setState(s => ({ ...s, videoId, isPlaying: false, cuePoints: Array(15).fill(null) }));
+      setState(s => ({ ...s, videoId, isPlaying: false, cuePoints: Array(45).fill(null) }));
     }
   };
 
@@ -261,9 +275,11 @@ function App() {
           color="blue"
           playerId="player-a"
           state={stateA}
+          currentSlot={slotA}
+          onSlotChange={setSlotA}
           onPlayPause={() => handlePlayPause('A')}
-          onHotCue={(idx) => handleHotCue('A', idx)}
-          onClearCue={(idx, e) => handleClearCue('A', idx, e)}
+          onHotCue={(idx) => handleHotCue('A', slotA * 15 + idx)}
+          onClearCue={(idx, e) => handleClearCue('A', slotA * 15 + idx, e)}
           onPitchChange={(val) => handlePitchChange('A', val)}
           onLoadUrl={(url) => handleLoadUrl('A', url)}
         />
@@ -274,9 +290,11 @@ function App() {
           color="red"
           playerId="player-b"
           state={stateB}
+          currentSlot={slotB}
+          onSlotChange={setSlotB}
           onPlayPause={() => handlePlayPause('B')}
-          onHotCue={(idx) => handleHotCue('B', idx)}
-          onClearCue={(idx, e) => handleClearCue('B', idx, e)}
+          onHotCue={(idx) => handleHotCue('B', slotB * 15 + idx)}
+          onClearCue={(idx, e) => handleClearCue('B', slotB * 15 + idx, e)}
           onPitchChange={(val) => handlePitchChange('B', val)}
           onLoadUrl={(url) => handleLoadUrl('B', url)}
         />
@@ -316,6 +334,8 @@ interface DeckProps {
   color: 'blue' | 'red';
   playerId: string;
   state: PlayerState;
+  currentSlot: number;
+  onSlotChange: (slot: number) => void;
   onPlayPause: () => void;
   onHotCue: (idx: number) => void;
   onClearCue: (idx: number, e: React.MouseEvent) => void;
@@ -323,7 +343,7 @@ interface DeckProps {
   onLoadUrl: (url: string) => void;
 }
 
-function Deck({ name, color, playerId, state, onPlayPause, onHotCue, onClearCue, onPitchChange, onLoadUrl }: DeckProps) {
+function Deck({ name, color, playerId, state, currentSlot, onSlotChange, onPlayPause, onHotCue, onClearCue, onPitchChange, onLoadUrl }: DeckProps) {
   const [url, setUrl] = useState('');
   const borderColor = color === 'blue' ? 'border-blue-900/50' : 'border-red-900/50';
   const glowColor = color === 'blue' ? 'shadow-blue-500/10' : 'shadow-red-500/10';
@@ -345,9 +365,27 @@ function Deck({ name, color, playerId, state, onPlayPause, onHotCue, onClearCue,
       <div className="p-6 flex flex-col gap-6">
         {/* Hot Cues */}
         <div className="flex flex-col gap-2">
-          <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest italic">Hot Cues</label>
+          <div className="flex justify-between items-center">
+            <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest italic">Hot Cues</label>
+            <div className="flex gap-1 bg-black/40 p-0.5 rounded-lg border border-white/5">
+              {['A', 'B', 'C'].map((slotName, i) => (
+                <button
+                  key={slotName}
+                  onClick={() => onSlotChange(i)}
+                  className={`
+                    px-2 py-0.5 text-[9px] font-black rounded-md transition-all
+                    ${currentSlot === i
+                      ? (color === 'blue' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-red-600 text-white shadow-lg shadow-red-500/20')
+                      : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/5'}
+                  `}
+                >
+                  SLOT {slotName}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid grid-cols-5 gap-1.5">
-            {state.cuePoints.map((cp, i) => (
+            {state.cuePoints.slice(currentSlot * 15, (currentSlot + 1) * 15).map((cp, i) => (
               <button
                 key={i}
                 onClick={() => onHotCue(i)}
@@ -357,7 +395,7 @@ function Deck({ name, color, playerId, state, onPlayPause, onHotCue, onClearCue,
                     ${cp !== null ? `${cueColor} border-opacity-100 shadow-[0_0_10px_rgba(0,0,0,0.3)]` : 'bg-neutral-800 border-neutral-700 text-neutral-600 border-dashed hover:border-neutral-500'}
                   `}
               >
-                <span className="relative z-10">{i + 1}</span>
+                <span className="relative z-10">{i + 1 + currentSlot * 15}</span>
                 {cp !== null && (
                   <span
                     onClick={(e) => onClearCue(i, e)}
