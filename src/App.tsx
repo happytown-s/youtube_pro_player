@@ -283,11 +283,15 @@ function Deck({ state, currentSlot, onSlotChange, onPlayPause, onHotCue, onClear
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const lastSeekTime = useRef(0);
 
   // Sync current time from player
   useEffect(() => {
     if (!player || isDragging) return;
     const interval = setInterval(() => {
+      // Don't sync for 1 second after a seek to prevent snap-back
+      if (Date.now() - lastSeekTime.current < 1000) return;
+
       const time = player.getCurrentTime() || 0;
       setCurrentTime(time);
       setDuration(player.getDuration() || 0);
@@ -307,7 +311,9 @@ function Deck({ state, currentSlot, onSlotChange, onPlayPause, onHotCue, onClear
     if (player) {
       const time = parseFloat(e.target.value);
       player.seekTo(time, true);
+      setCurrentTime(time); // Optimistically set time
     }
+    lastSeekTime.current = Date.now(); // Mark the seek time
     setIsDragging(false);
     e.currentTarget.blur();
   };
