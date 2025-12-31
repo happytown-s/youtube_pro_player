@@ -484,7 +484,7 @@ function Deck({ state, currentSlot, onSlotChange, onPlayPause, onHotCue, onHotCu
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-8 items-start">
       {/* LEFT COLUMN: Video & Timeline */}
-      <div className="flex flex-col gap-6 sticky top-8">
+      <div className="flex flex-col gap-6 xl:sticky xl:top-8">
         {/* Load Section */}
         {/* Load Section */}
         <div className="bg-neutral-900 rounded-[2rem] border border-neutral-800 p-6 flex flex-col gap-4 shadow-xl">
