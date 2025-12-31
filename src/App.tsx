@@ -282,21 +282,34 @@ function Deck({ state, currentSlot, onSlotChange, onPlayPause, onHotCue, onClear
   const [url, setUrl] = useState('');
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
 
+  // Sync current time from player
   useEffect(() => {
-    if (!player) return;
+    if (!player || isDragging) return;
     const interval = setInterval(() => {
-      setCurrentTime(player.getCurrentTime() || 0);
+      const time = player.getCurrentTime() || 0;
+      setCurrentTime(time);
       setDuration(player.getDuration() || 0);
     }, 100);
     return () => clearInterval(interval);
-  }, [player]);
+  }, [player, isDragging]);
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!player) return;
-    const time = parseFloat(e.target.value);
-    player.seekTo(time, true);
-    setCurrentTime(time);
+  const handleSeekStart = () => {
+    setIsDragging(true);
+  };
+
+  const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCurrentTime(parseFloat(e.target.value));
+  };
+
+  const handleSeekEnd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (player) {
+      const time = parseFloat(e.target.value);
+      player.seekTo(time, true);
+    }
+    setIsDragging(false);
+    e.currentTarget.blur();
   };
 
   const preventFocus = (e: React.MouseEvent) => {
@@ -355,15 +368,16 @@ function Deck({ state, currentSlot, onSlotChange, onPlayPause, onHotCue, onClear
               </div>
             </div>
             <div className="relative group/seek h-8 flex items-center">
-              <div className="absolute inset-0 bg-blue-500/5 blur-xl group-hover/seek:bg-blue-500/10 transition-all rounded-full"></div>
+              <div className="absolute inset-0 bg-blue-500/5 blur-xl group-hover/seek:bg-blue-500/10 transition-all rounded-full pointer-events-none"></div>
               <input
                 type="range"
                 min="0"
                 max={duration}
                 step="0.1"
                 value={currentTime}
-                onChange={handleSeek}
-                onMouseUp={(e) => e.currentTarget.blur()}
+                onMouseDown={handleSeekStart}
+                onInput={handleSeekChange}
+                onChange={handleSeekEnd}
                 className="w-full h-2 bg-neutral-800 rounded-full appearance-none cursor-pointer accent-blue-500 relative z-10"
               />
             </div>
