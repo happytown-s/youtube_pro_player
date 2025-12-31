@@ -176,9 +176,19 @@ function App() {
     }
   }, []);
 
-  const handleClearCue = useCallback((index: number, e?: React.MouseEvent) => {
+  const handleHotCueRelease = useCallback(() => {
+    if (stateRef.current.isGateMode) {
+      const p = playerRef.current;
+      if (p) {
+        p.pauseVideo();
+      }
+    }
+  }, []);
+
+  const handleClearCue = useCallback((index: number, e?: React.MouseEvent | React.TouchEvent) => {
     if (e) {
       e.stopPropagation();
+      e.preventDefault(); // Prevent ghost clicks
     }
     setState(s => {
       const newCues = [...s.cuePoints];
@@ -237,7 +247,7 @@ function App() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [slot, activeKey, handleHotCue]);
+  }, [slot, activeKey, handleHotCue, handleClearCue]);
 
   const handlePlayPause = useCallback(() => {
     const p = playerRef.current;
@@ -318,8 +328,8 @@ function App() {
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-200 font-sans p-4 md:p-8 flex flex-col items-center relative">
-      <header className="mb-12 flex flex-row items-center justify-center gap-6">
-        <div className="relative w-16 h-16 md:w-20 md:h-20 group">
+      <header className="mb-6 md:mb-12 flex flex-row items-center justify-center gap-4 md:gap-6">
+        <div className="relative w-12 h-12 md:w-20 md:h-20 group">
           <div className="absolute inset-0 bg-blue-500/30 rounded-full blur-2xl animate-pulse group-hover:bg-blue-500/40 transition-all"></div>
           <img
             src="/logo.png"
@@ -328,20 +338,21 @@ function App() {
           />
         </div>
         <div className="flex flex-col">
-          <h1 className="text-2xl md:text-4xl lg:text-5xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-red-400 italic">
+          <h1 className="text-xl md:text-4xl lg:text-5xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-red-400 italic">
             YOUTUBE PRO PLAYER
           </h1>
-          <p className="text-neutral-500 text-[9px] md:text-xs uppercase tracking-[0.4em] font-bold translate-y-[-4px]">Unified Professional Workspace</p>
+          <p className="text-neutral-500 text-[8px] md:text-xs uppercase tracking-[0.4em] font-bold translate-y-[-2px] md:translate-y-[-4px]">Unified Professional Workspace</p>
         </div>
       </header>
 
-      <main className="w-full max-w-[1600px] flex flex-col gap-8">
+      <main className="w-full max-w-[1600px] flex flex-col gap-6 md:gap-8">
         <Deck
           state={state}
           currentSlot={slot}
           onSlotChange={setSlot}
           onPlayPause={handlePlayPause}
           onHotCue={handleHotCue}
+          onHotCueRelease={handleHotCueRelease}
           onClearCue={handleClearCue}
           onPitchChange={handlePitchChange}
           onVolumeChange={handleVolumeChange}
@@ -407,7 +418,8 @@ interface DeckProps {
   onSlotChange: (slot: number) => void;
   onPlayPause: () => void;
   onHotCue: (idx: number) => void;
-  onClearCue: (idx: number, e?: React.MouseEvent) => void;
+  onHotCueRelease: () => void;
+  onClearCue: (idx: number, e?: React.MouseEvent | React.TouchEvent) => void;
   onPitchChange: (val: number) => void;
   onVolumeChange: (val: number) => void;
   onGateModeToggle: () => void;
@@ -417,7 +429,7 @@ interface DeckProps {
   player: YTPlayer | null;
 }
 
-function Deck({ state, currentSlot, onSlotChange, onPlayPause, onHotCue, onClearCue, onPitchChange, onVolumeChange, onGateModeToggle, onLoadUrl, onSavePreset, onToggleLibrary, player }: DeckProps) {
+function Deck({ state, currentSlot, onSlotChange, onPlayPause, onHotCue, onHotCueRelease, onClearCue, onPitchChange, onVolumeChange, onGateModeToggle, onLoadUrl, onSavePreset, onToggleLibrary, player }: DeckProps) {
   const [url, setUrl] = useState('');
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -641,7 +653,7 @@ function Deck({ state, currentSlot, onSlotChange, onPlayPause, onHotCue, onClear
           <label className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.4em] italic px-2">Cue Command Center</label>
           <div className="flex flex-col gap-3">
             {HOT_CUE_KEYS.map((row, rowIdx) => (
-              <div key={rowIdx} className="grid grid-cols-10 gap-3">
+              <div key={rowIdx} className="grid grid-cols-5 md:grid-cols-10 gap-2 md:gap-3">
                 {row.map((key) => {
                   const flatIdx = FLAT_KEYS.indexOf(key);
                   const globalIdx = currentSlot * 30 + flatIdx;
@@ -649,26 +661,29 @@ function Deck({ state, currentSlot, onSlotChange, onPlayPause, onHotCue, onClear
                   return (
                     <button
                       key={key}
-                      onMouseDown={preventFocus}
-                      onClick={() => onHotCue(globalIdx)}
+                      onMouseDown={(e) => { preventFocus(e); onHotCue(globalIdx); }}
+                      onMouseUp={onHotCueRelease}
+                      onMouseLeave={onHotCueRelease}
+                      onTouchStart={(e) => { e.preventDefault(); onHotCue(globalIdx); }}
+                      onTouchEnd={(e) => { e.preventDefault(); onHotCueRelease(); }}
                       className={`
-                        relative h-20 rounded-2xl border-2 text-2xl font-black transition-all duration-200 active:scale-95
+                        relative h-16 md:h-20 rounded-xl md:rounded-2xl border-2 text-xl md:text-2xl font-black transition-all duration-75 active:scale-95 touch-manipulation select-none
                         flex items-center justify-center group/cue overflow-hidden
                         ${cp !== null ? `${cueColor} border-opacity-100 shadow-xl scale-[1.02] z-10` : 'bg-neutral-800/50 border-neutral-700/30 text-neutral-600 border-dashed hover:border-neutral-500 hover:bg-neutral-800'}
                       `}
                     >
-                      <span className="uppercase relative z-10">{key}</span>
+                      <span className="uppercase relative z-10 pointer-events-none">{key}</span>
                       {cp !== null && (
                         <>
-                          <div className="absolute inset-0 bg-indigo-500/10 animate-pulse"></div>
+                          <div className="absolute inset-0 bg-indigo-500/10 animate-pulse pointer-events-none"></div>
                           <span
-                            onMouseDown={preventFocus}
-                            onClick={(e) => onClearCue(globalIdx, e)}
-                            className="absolute top-1 right-1 w-6 h-6 bg-white text-black text-[12px] rounded-full flex items-center justify-center opacity-0 group-hover/cue:opacity-100 hover:bg-red-500 hover:text-white transition-all transform hover:scale-110 cursor-pointer shadow-2xl z-20"
+                            onMouseDown={(e) => onClearCue(globalIdx, e)}
+                            onTouchStart={(e) => onClearCue(globalIdx, e)}
+                            className="absolute top-1 right-1 w-6 h-6 bg-white text-black text-[12px] rounded-full flex items-center justify-center opacity-100 md:opacity-0 group-hover/cue:opacity-100 hover:bg-red-500 hover:text-white transition-all transform hover:scale-110 cursor-pointer shadow-2xl z-20"
                           >
                             ×
                           </span>
-                          <div className="absolute bottom-2 text-[10px] font-mono font-black text-indigo-300/80 tracking-tighter">
+                          <div className="absolute bottom-1 md:bottom-2 text-[8px] md:text-[10px] font-mono font-black text-indigo-300/80 tracking-tighter pointer-events-none">
                             {formatTime(cp)}
                           </div>
                         </>
