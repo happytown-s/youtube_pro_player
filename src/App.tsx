@@ -26,7 +26,7 @@ function App() {
   const [stateA, setStateA] = useState<PlayerState>({
     isPlaying: false,
     playbackRate: 1.0,
-    cuePoints: Array(45).fill(null),
+    cuePoints: Array(120).fill(null), // 8 slots * 15 = 120
     videoId: INITIAL_VIDEO_ID_A,
     volume: 100,
   });
@@ -34,7 +34,7 @@ function App() {
   const [stateB, setStateB] = useState<PlayerState>({
     isPlaying: false,
     playbackRate: 1.0,
-    cuePoints: Array(45).fill(null),
+    cuePoints: Array(120).fill(null), // 8 slots * 15 = 120
     videoId: INITIAL_VIDEO_ID_B,
     volume: 100,
   });
@@ -168,9 +168,11 @@ function App() {
       if (key === '1') setSlotA(0);
       if (key === '2') setSlotA(1);
       if (key === '3') setSlotA(2);
+      if (key === '4') setSlotA(3);
       if (key === '7') setSlotB(0);
       if (key === '8') setSlotB(1);
       if (key === '9') setSlotB(2);
+      if (key === '0') setSlotB(3);
 
       // Deck A (Left Side): 3 rows of 5
       const deckAKeys = [
@@ -239,7 +241,7 @@ function App() {
     const videoId = extractVideoId(url);
     if (videoId) {
       player.loadVideoById(videoId);
-      setState(s => ({ ...s, videoId, isPlaying: false, cuePoints: Array(45).fill(null) }));
+      setState(s => ({ ...s, videoId, isPlaying: false, cuePoints: Array(120).fill(null) }));
     }
   };
 
@@ -271,9 +273,9 @@ function App() {
       <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* DECK A */}
         <Deck
-          name="DECK A"
           color="blue"
           playerId="player-a"
+          player={playerA}
           state={stateA}
           currentSlot={slotA}
           onSlotChange={setSlotA}
@@ -286,9 +288,9 @@ function App() {
 
         {/* DECK B */}
         <Deck
-          name="DECK B"
           color="red"
           playerId="player-b"
+          player={playerB}
           state={stateB}
           currentSlot={slotB}
           onSlotChange={setSlotB}
@@ -330,9 +332,9 @@ function App() {
 }
 
 interface DeckProps {
-  name: string;
   color: 'blue' | 'red';
   playerId: string;
+  player: any;
   state: PlayerState;
   currentSlot: number;
   onSlotChange: (slot: number) => void;
@@ -343,8 +345,34 @@ interface DeckProps {
   onLoadUrl: (url: string) => void;
 }
 
-function Deck({ name, color, playerId, state, currentSlot, onSlotChange, onPlayPause, onHotCue, onClearCue, onPitchChange, onLoadUrl }: DeckProps) {
+function Deck({ color, playerId, player, state, currentSlot, onSlotChange, onPlayPause, onHotCue, onClearCue, onPitchChange, onLoadUrl }: DeckProps) {
   const [url, setUrl] = useState('');
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    if (!player) return;
+
+    const interval = setInterval(() => {
+      setCurrentTime(player.getCurrentTime() || 0);
+      setDuration(player.getDuration() || 0);
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [player]);
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!player) return;
+    const time = parseFloat(e.target.value);
+    player.seekTo(time, true);
+    setCurrentTime(time);
+  };
+
+  const formatTime = (time: number) => {
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
   const borderColor = color === 'blue' ? 'border-blue-900/50' : 'border-red-900/50';
   const glowColor = color === 'blue' ? 'shadow-blue-500/10' : 'shadow-red-500/10';
   const accentColor = color === 'blue' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-red-600 hover:bg-red-500';
@@ -356,19 +384,33 @@ function Deck({ name, color, playerId, state, currentSlot, onSlotChange, onPlayP
       {/* Player Display */}
       <div className="aspect-video bg-black relative group">
         <div id={playerId} className="w-full h-full"></div>
-        <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
-          <span className={`text-[10px] font-black tracking-widest ${textColor}`}>{name}</span>
-        </div>
       </div>
 
       {/* Deck Controls */}
       <div className="p-6 flex flex-col gap-6">
+        {/* Seek Bar */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex justify-between text-[10px] font-mono font-bold text-neutral-500">
+            <span>{formatTime(currentTime)}</span>
+            <span>{formatTime(duration)}</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max={duration}
+            step="0.1"
+            value={currentTime}
+            onChange={handleSeek}
+            className={`w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer ${color === 'blue' ? 'accent-blue-500' : 'accent-red-500'}`}
+          />
+        </div>
+
         {/* Hot Cues */}
         <div className="flex flex-col gap-2">
           <div className="flex justify-between items-center">
             <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest italic">Hot Cues</label>
             <div className="flex gap-1 bg-black/40 p-0.5 rounded-lg border border-white/5">
-              {['A', 'B', 'C'].map((slotName, i) => (
+              {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map((slotName, i) => (
                 <button
                   key={slotName}
                   onClick={() => onSlotChange(i)}
@@ -379,7 +421,7 @@ function Deck({ name, color, playerId, state, currentSlot, onSlotChange, onPlayP
                       : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/5'}
                   `}
                 >
-                  SLOT {slotName}
+                  {slotName}
                 </button>
               ))}
             </div>
