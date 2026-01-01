@@ -4,7 +4,7 @@ declare global {
   interface Window {
     onYouTubeIframeAPIReady: () => void;
     YT: {
-      Player: new (elementId: string, options: Record<string, unknown>) => void;
+      Player: new (elementId: string | HTMLElement, options: Record<string, unknown>) => YTPlayer;
       PlayerState: {
         PLAYING: number;
         PAUSED: number;
@@ -25,6 +25,7 @@ interface YTPlayer {
   setVolume: (volume: number) => void;
   setPlaybackRate: (suggestedRate: number) => void;
   loadVideoById: (videoId: string) => void;
+  destroy: () => void;
 }
 
 interface PlayerState {
@@ -69,6 +70,8 @@ function App() {
           playbackRate: parsed.playbackRate || 1.0,
           volume: parsed.volume || 100,
           isGateMode: parsed.isGateMode || false,
+          cuePoints: Array.isArray(parsed.cuePoints) ? parsed.cuePoints : Array(300).fill(null),
+          videoId: parsed.videoId || INITIAL_VIDEO_ID,
         };
       } catch (e) {
         console.error("Failed to load saved state", e);
@@ -116,23 +119,18 @@ function App() {
     playerRef.current = player;
   }, [player]);
 
+  const playerContainerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     document.title = "YouTube Pro Player";
-    if (!window.YT) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      const firstScriptTag = document.getElementsByTagName('script')[0];
-      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-
-      window.onYouTubeIframeAPIReady = () => {
-        initPlayer();
-      };
-    } else {
-      initPlayer();
-    }
+    let playerInstance: YTPlayer | undefined;
 
     function initPlayer() {
-      new window.YT.Player('player', {
+      if (!playerContainerRef.current) return;
+      // Initialize only if not already initialized on this element
+      if (playerInstance) return;
+
+      playerInstance = new window.YT.Player(playerContainerRef.current, {
         height: '100%',
         width: '100%',
         videoId: stateRef.current.videoId, // Use saved videoId
@@ -155,6 +153,26 @@ function App() {
         },
       });
     }
+
+    if (!window.YT) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+
+      window.onYouTubeIframeAPIReady = () => {
+        initPlayer();
+      };
+    } else {
+      initPlayer();
+    }
+
+    return () => {
+      if (playerInstance && typeof playerInstance.destroy === 'function') {
+        playerInstance.destroy();
+      }
+      setPlayer(null);
+    };
   }, []);
 
   const handleHotCue = useCallback((index: number) => {
@@ -359,6 +377,7 @@ function App() {
           onGateModeToggle={handleGateModeToggle}
           onLoadUrl={handleLoadVideo}
           player={player}
+          playerContainerRef={playerContainerRef}
           onSavePreset={handleSavePreset}
           onToggleLibrary={() => setShowLibrary(true)}
         />
@@ -427,9 +446,10 @@ interface DeckProps {
   onSavePreset: () => void;
   onToggleLibrary: () => void;
   player: YTPlayer | null;
+  playerContainerRef: React.RefObject<HTMLDivElement | null>;
 }
 
-function Deck({ state, currentSlot, onSlotChange, onPlayPause, onHotCue, onHotCueRelease, onClearCue, onPitchChange, onVolumeChange, onGateModeToggle, onLoadUrl, onSavePreset, onToggleLibrary, player }: DeckProps) {
+function Deck({ state, currentSlot, onSlotChange, onPlayPause, onHotCue, onHotCueRelease, onClearCue, onPitchChange, onVolumeChange, onGateModeToggle, onLoadUrl, onSavePreset, onToggleLibrary, player, playerContainerRef }: DeckProps) {
   const [url, setUrl] = useState('');
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -527,7 +547,8 @@ function Deck({ state, currentSlot, onSlotChange, onPlayPause, onHotCue, onHotCu
 
         <div className="bg-neutral-900 rounded-[2.5rem] overflow-hidden border border-neutral-800 shadow-2xl p-4 md:p-8 flex flex-col gap-8 relative">
           <div className="aspect-video bg-black rounded-2xl overflow-hidden relative shadow-[0_0_50px_rgba(0,0,0,0.5)]">
-            <div id="player" className="w-full h-full"></div>
+            {/* Player Container */}
+            <div ref={playerContainerRef} className="w-full h-full"></div>
             {/* Focus Protection Layer */}
             <div className="absolute inset-0 z-20 cursor-default" onMouseDown={preventFocus}></div>
           </div>
